@@ -15,6 +15,8 @@
  */
 package com.android.wallpaper.module;
 
+import static com.android.wallpaper.module.NetworkStatusNotifier.NETWORK_NOT_INITIALIZED;
+
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
@@ -41,6 +43,7 @@ import com.android.wallpaper.model.ThirdPartyLiveWallpaperCategory;
 import com.android.wallpaper.model.WallpaperCategory;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.FormFactorChecker.FormFactor;
+import com.android.wallpaper.module.NetworkStatusNotifier.NetworkStatus;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -51,6 +54,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -76,9 +80,17 @@ public class DefaultCategoryProvider implements CategoryProvider {
     protected ArrayList<Category> mCategories;
     protected boolean mFetchedCategories;
 
+    private NetworkStatusNotifier mNetworkStatusNotifier;
+    // The network status of the last fetch from the server.
+    @NetworkStatus
+    private int mNetworkStatus;
+    private Locale mLocale;
+
     public DefaultCategoryProvider(Context context) {
         mAppContext = context.getApplicationContext();
         mCategories = new ArrayList<>();
+        mNetworkStatusNotifier = InjectorProvider.getInjector().getNetworkStatusNotifier(context);
+        mNetworkStatus = NETWORK_NOT_INITIALIZED;
     }
 
     @Override
@@ -94,6 +106,8 @@ public class DefaultCategoryProvider implements CategoryProvider {
             mFetchedCategories = false;
         }
 
+        mNetworkStatus = mNetworkStatusNotifier.getNetworkStatus();
+        mLocale = getLocale();
         doFetch(receiver, forceRefresh);
     }
 
@@ -122,6 +136,20 @@ public class DefaultCategoryProvider implements CategoryProvider {
         return null;
     }
 
+    @Override
+    public boolean isCategoriesFetched() {
+        return mFetchedCategories;
+    }
+
+    @Override
+    public void resetIfNeeded() {
+        if (mNetworkStatus != mNetworkStatusNotifier.getNetworkStatus()
+                || mLocale != getLocale()) {
+            mCategories.clear();
+            mFetchedCategories = false;
+        }
+    }
+
     protected void doFetch(final CategoryReceiver receiver, boolean forceRefresh) {
         CategoryReceiver delegatingReceiver = new CategoryReceiver() {
             @Override
@@ -138,6 +166,10 @@ public class DefaultCategoryProvider implements CategoryProvider {
         };
 
         new FetchCategoriesTask(delegatingReceiver, mAppContext).execute();
+    }
+
+    private Locale getLocale() {
+        return mAppContext.getResources().getConfiguration().getLocales().get(0);
     }
 
     /**
