@@ -46,6 +46,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.widget.ContentLoadingProgressBar;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener;
@@ -75,8 +76,8 @@ import com.android.wallpaper.module.WallpaperPersister;
 import com.android.wallpaper.module.WallpaperPersister.Destination;
 import com.android.wallpaper.module.WallpaperPreferences;
 import com.android.wallpaper.module.WallpaperSetter;
+import com.android.wallpaper.picker.AppbarFragment;
 import com.android.wallpaper.picker.BaseActivity;
-import com.android.wallpaper.picker.BottomActionBarFragment;
 import com.android.wallpaper.picker.CurrentWallpaperBottomSheetPresenter;
 import com.android.wallpaper.picker.FragmentTransactionChecker;
 import com.android.wallpaper.picker.MyPhotosStarter.MyPhotosStarterProvider;
@@ -89,6 +90,7 @@ import com.android.wallpaper.picker.StartRotationErrorDialogFragment;
 import com.android.wallpaper.picker.WallpaperInfoHelper;
 import com.android.wallpaper.picker.WallpapersUiContainer;
 import com.android.wallpaper.picker.individual.SetIndividualHolder.OnSetListener;
+import com.android.wallpaper.util.ActivityUtils;
 import com.android.wallpaper.util.DiskBasedLogger;
 import com.android.wallpaper.util.SizeCalculator;
 import com.android.wallpaper.widget.BottomActionBar;
@@ -108,7 +110,7 @@ import java.util.Random;
 /**
  * Displays the Main UI for picking an individual wallpaper image.
  */
-public class IndividualPickerFragment extends BottomActionBarFragment
+public class IndividualPickerFragment extends AppbarFragment
         implements RotationStarter, StartRotationErrorDialogFragment.Listener,
         CurrentWallpaperBottomSheetPresenter.RefreshListener,
         SetWallpaperErrorDialogFragment.Listener, SetWallpaperDialogFragment.Listener,
@@ -172,11 +174,18 @@ public class IndividualPickerFragment extends BottomActionBarFragment
     }
 
     /**
-     * Interface to be implemented by a Fragment hosting a {@link IndividualPickerFragment}
+     * Interface to be implemented by a Fragment(or an Activity) hosting
+     * a {@link IndividualPickerFragment}.
      */
     public interface IndividualPickerFragmentHost {
         /**
-         * Sets the title in the toolbar.
+         * Indicates if the host has toolbar to show the title. If it does, we should set the title
+         * there.
+         */
+        boolean isHostToolbarShown();
+
+        /**
+         * Sets the title in the host's toolbar.
          */
         void setToolbarTitle(CharSequence title);
 
@@ -395,7 +404,11 @@ public class IndividualPickerFragment extends BottomActionBarFragment
         if (getIndividualPickerFragmentHost() == null) {
             return;
         }
-        getIndividualPickerFragmentHost().setToolbarTitle(mCategory.getTitle());
+        if (getIndividualPickerFragmentHost().isHostToolbarShown()) {
+            getIndividualPickerFragmentHost().setToolbarTitle(mCategory.getTitle());
+        } else {
+            setTitle(mCategory.getTitle());
+        }
         mWallpaperRotationInitializer = mCategory.getWallpaperRotationInitializer();
         // Avoids the "rotation" action is not shown correctly
         // in a rare case : onCategoryLoaded() is called after onBottomActionBarReady().
@@ -478,6 +491,15 @@ public class IndividualPickerFragment extends BottomActionBarFragment
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_individual_picker, container, false);
+        if (getIndividualPickerFragmentHost().isHostToolbarShown()) {
+            view.findViewById(R.id.header_bar).setVisibility(View.GONE);
+            setUpArrowEnabled(ActivityUtils.isLaunchedFromSettings(getActivity().getIntent()));
+        } else {
+            setUpToolbar(view);
+            if (mCategory != null) {
+                setTitle(mCategory.getTitle());
+            }
+        }
 
         mTileSizePx = SizeCalculator.getIndividualTileSize(getActivity());
 
@@ -517,7 +539,12 @@ public class IndividualPickerFragment extends BottomActionBarFragment
     }
 
     private IndividualPickerFragmentHost getIndividualPickerFragmentHost() {
-        return (IndividualPickerFragmentHost) getParentFragment();
+        Fragment parentFragment = getParentFragment();
+        if (parentFragment != null) {
+            return (IndividualPickerFragmentHost) parentFragment;
+        } else {
+            return (IndividualPickerFragmentHost) getActivity();
+        }
     }
 
     private void maybeSetUpImageGrid() {
@@ -577,8 +604,10 @@ public class IndividualPickerFragment extends BottomActionBarFragment
 
     @Override
     protected void onBottomActionBarReady(BottomActionBar bottomActionBar) {
+        super.onBottomActionBarReady(bottomActionBar);
         mBottomActionBar = bottomActionBar;
-        if (isRotationEnabled()) {
+        boolean isRotationEnabled = isRotationEnabled();
+        if (isRotationEnabled) {
             mBottomActionBar.showActionsOnly(ROTATION);
         }
         mBottomActionBar.setActionClickListener(ROTATION, unused -> {
@@ -602,7 +631,9 @@ public class IndividualPickerFragment extends BottomActionBarFragment
                     new PreviewActivity.PreviewActivityIntentFactory(),
                     PREVIEW_WALLPAPER_REQUEST_CODE);
         });
-        mBottomActionBar.show();
+        if (isRotationEnabled || (mBottomActionBar.getBackButtonVisibility() == View.VISIBLE)) {
+            mBottomActionBar.show();
+        }
     }
 
     @Override
@@ -1001,7 +1032,8 @@ public class IndividualPickerFragment extends BottomActionBarFragment
                 ? index + 1 : index;
         ViewHolder holder = mImageGrid.findViewHolderForAdapterPosition(index);
         if (holder != null) {
-            holder.itemView.setActivated(isActivated);
+            CircularImageView thumbnail = holder.itemView.findViewById(R.id.thumbnail);
+            thumbnail.setClipped(isActivated);
         } else {
             // Item is not visible, make sure the item is re-bound when it becomes visible.
             mAdapter.notifyItemChanged(index);
@@ -1016,10 +1048,7 @@ public class IndividualPickerFragment extends BottomActionBarFragment
         index = (shouldShowRotationTile() || mCategory.supportsCustomPhotos())
                 ? index + 1 : index;
         ViewHolder holder = mImageGrid.findViewHolderForAdapterPosition(index);
-        if (holder != null) {
-            holder.itemView.findViewById(R.id.check_circle)
-                    .setVisibility(isApplied ? View.VISIBLE : View.GONE);
-        } else {
+        if (holder == null) {
             // Item is not visible, make sure the item is re-bound when it becomes visible.
             mAdapter.notifyItemChanged(index);
         }
@@ -1066,6 +1095,45 @@ public class IndividualPickerFragment extends BottomActionBarFragment
 
     private boolean shouldShowRotationTile() {
         return mFormFactor == FormFactorChecker.FORM_FACTOR_DESKTOP && isRotationEnabled();
+    }
+
+    class EmptySelectionAnimator implements SelectionAnimator{
+        EmptySelectionAnimator() {}
+
+        public boolean isSelected() {
+            return false;
+        }
+
+        /**
+         * Sets the UI to selected immediately with no animation.
+         */
+        public void selectImmediately() {}
+
+        /**
+         * Sets the UI to deselected immediately with no animation.
+         */
+        public void deselectImmediately() {}
+
+        /**
+         * Sets the UI to selected with a smooth animation.
+         */
+        public void animateSelected() {}
+
+        /**
+         * Sets the UI to deselected with a smooth animation.
+         */
+        public void animateDeselected() {}
+
+        /**
+         * Sets the UI to show a loading indicator.
+         */
+        public void showLoading() {}
+
+        /**
+         * Sets the UI to hide the loading indicator.
+         */
+        public void showNotLoading() {}
+
     }
 
     /**
@@ -1147,8 +1215,7 @@ public class IndividualPickerFragment extends BottomActionBarFragment
         private ViewHolder createRotationHolder(ViewGroup parent) {
             LayoutInflater layoutInflater = LayoutInflater.from(getActivity());
             View view = layoutInflater.inflate(R.layout.grid_item_rotation_desktop, parent, false);
-            SelectionAnimator selectionAnimator =
-                    new CheckmarkSelectionAnimator(getActivity(), view);
+            SelectionAnimator selectionAnimator = new EmptySelectionAnimator();
             return new DesktopRotationHolder(getActivity(), mTileSizePx.y, view, selectionAnimator,
                     IndividualPickerFragment.this);
         }
@@ -1158,8 +1225,7 @@ public class IndividualPickerFragment extends BottomActionBarFragment
             View view = layoutInflater.inflate(R.layout.grid_item_image, parent, false);
 
             if (mFormFactor == FormFactorChecker.FORM_FACTOR_DESKTOP) {
-                SelectionAnimator selectionAnimator =
-                        new CheckmarkSelectionAnimator(getActivity(), view);
+                SelectionAnimator selectionAnimator = new EmptySelectionAnimator();
                 return new SetIndividualHolder(
                         getActivity(), mTileSizePx.y, view,
                         selectionAnimator,
@@ -1312,10 +1378,8 @@ public class IndividualPickerFragment extends BottomActionBarFragment
                 mAppliedWallpaperInfo = wallpaper;
             }
 
-            holder.itemView.setActivated(
-                    (isWallpaperApplied && !hasUserSelectedWallpaper) || isWallpaperSelected);
-            holder.itemView.findViewById(R.id.check_circle).setVisibility(
-                    isWallpaperApplied ? View.VISIBLE : View.GONE);
+            CircularImageView thumbnail = holder.itemView.findViewById(R.id.thumbnail);
+            thumbnail.setClipped(isWallpaperApplied);
         }
     }
 
