@@ -150,6 +150,11 @@ public class DefaultCategoryProvider implements CategoryProvider {
         }
     }
 
+    @Override
+    public boolean isFeaturedCategory(Category category) {
+        return false;
+    }
+
     protected void doFetch(final CategoryReceiver receiver, boolean forceRefresh) {
         CategoryReceiver delegatingReceiver = new CategoryReceiver() {
             @Override
@@ -178,18 +183,18 @@ public class DefaultCategoryProvider implements CategoryProvider {
      */
     protected static class FetchCategoriesTask extends AsyncTask<Void, Category, Void> {
         private CategoryReceiver mReceiver;
+        private PartnerProvider mPartnerProvider;
         protected final Context mAppContext;
-        protected final PartnerProvider mPartnerProvider;
 
         public FetchCategoriesTask(CategoryReceiver receiver, Context context) {
             mReceiver = receiver;
             mAppContext = context.getApplicationContext();
-            mPartnerProvider = InjectorProvider.getInjector().getPartnerProvider(
-                    mAppContext);
         }
 
         @Override
         protected Void doInBackground(Void... voids) {
+            mPartnerProvider = InjectorProvider.getInjector().getPartnerProvider(
+                    mAppContext);
             FormFactorChecker formFactorChecker =
                     InjectorProvider.getInjector().getFormFactorChecker(mAppContext);
             @FormFactor int formFactor = formFactorChecker.getFormFactor();

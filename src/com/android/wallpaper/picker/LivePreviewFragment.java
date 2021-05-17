@@ -33,8 +33,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.Point;
-import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -66,14 +64,14 @@ import androidx.slice.widget.SliceView;
 import com.android.wallpaper.R;
 import com.android.wallpaper.compat.BuildCompat;
 import com.android.wallpaper.module.WallpaperPersister.SetWallpaperCallback;
+import com.android.wallpaper.util.ResourceUtils;
 import com.android.wallpaper.util.ScreenSizeCalculator;
 import com.android.wallpaper.util.SizeCalculator;
 import com.android.wallpaper.util.WallpaperConnection;
 import com.android.wallpaper.util.WallpaperSurfaceCallback;
 import com.android.wallpaper.widget.BottomActionBar;
 import com.android.wallpaper.widget.BottomActionBar.AccessibilityCallback;
-import com.android.wallpaper.widget.LiveTileOverlay;
-import com.android.wallpaper.widget.LockScreenPreviewer;
+import com.android.wallpaper.widget.LockScreenPreviewer2;
 import com.android.wallpaper.widget.WallpaperColorsLoader;
 import com.android.wallpaper.widget.WallpaperInfoView;
 
@@ -103,10 +101,6 @@ public class LivePreviewFragment extends PreviewFragment implements
     protected CardView mHomePreviewCard;
     protected ImageView mHomePreview;
 
-    private final int[] mLivePreviewLocation = new int[2];
-    private final Rect mPreviewLocalRect = new Rect();
-    private final Rect mPreviewGlobalRect = new Rect();
-
     private Intent mDeleteIntent;
     private Intent mSettingsIntent;
 
@@ -119,7 +113,7 @@ public class LivePreviewFragment extends PreviewFragment implements
     private SurfaceView mWorkspaceSurface;
     private SurfaceView mWallpaperSurface;
     private ViewGroup mLockPreviewContainer;
-    private LockScreenPreviewer mLockScreenPreviewer;
+    private LockScreenPreviewer2 mLockScreenPreviewer;
     private WorkspaceSurfaceHolderCallback mWorkspaceSurfaceCallback;
     private WallpaperSurfaceCallback mWallpaperSurfaceCallback;
 
@@ -196,7 +190,7 @@ public class LivePreviewFragment extends PreviewFragment implements
         mTouchForwardingLayout.setTargetView(mHomePreview);
         mTouchForwardingLayout.setForwardingEnabled(true);
         mLockPreviewContainer = mPreviewContainer.findViewById(R.id.lock_screen_preview_container);
-        mLockScreenPreviewer = new LockScreenPreviewer(getLifecycle(), activity,
+        mLockScreenPreviewer = new LockScreenPreviewer2(getLifecycle(), getContext(),
                 mLockPreviewContainer);
         mWallpaperSurface = mHomePreviewCard.findViewById(R.id.wallpaper_surface);
         mWorkspaceSurface = mHomePreviewCard.findViewById(R.id.workspace_surface);
@@ -206,9 +200,9 @@ public class LivePreviewFragment extends PreviewFragment implements
         mWallpaperSurfaceCallback = new WallpaperSurfaceCallback(getContext(),
                 mHomePreview, mWallpaperSurface);
 
-        TabLayout tabs = inflater.inflate(R.layout.full_preview_tabs,
-                view.findViewById(R.id.toolbar_tabs_container))
-                .findViewById(R.id.full_preview_tabs);
+        TabLayout tabs = view.findViewById(R.id.pill_tabs);
+        tabs.addTab(tabs.newTab().setText(getContext().getString(R.string.home_screen_message)));
+        tabs.addTab(tabs.newTab().setText(getContext().getString(R.string.lock_screen_message)));
         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -222,7 +216,7 @@ public class LivePreviewFragment extends PreviewFragment implements
             public void onTabReselected(TabLayout.Tab tab) {}
         });
 
-        // The TabLayout only contains below tabs, see: full_preview_tabs.xml
+        // The TabLayout only contains below tabs
         // 0. Home tab
         // 1. Lock tab
         tabs.getTabAt(mViewAsHome ? 0 : 1).select();
@@ -250,19 +244,12 @@ public class LivePreviewFragment extends PreviewFragment implements
 
     private void updateWallpaperSurface() {
         mWallpaperSurface.getHolder().addCallback(mWallpaperSurfaceCallback);
+        mWallpaperSurface.setZOrderMediaOverlay(true);
     }
 
     private void updateScreenPreview(boolean isHomeSelected) {
         mWorkspaceSurface.setVisibility(isHomeSelected ? View.VISIBLE : View.INVISIBLE);
         mLockPreviewContainer.setVisibility(isHomeSelected ? View.INVISIBLE : View.VISIBLE);
-    }
-
-    private void repositionPreview(ImageView previewView) {
-        previewView.getLocationOnScreen(mLivePreviewLocation);
-        mPreviewGlobalRect.set(0, 0, previewView.getMeasuredWidth(),
-                previewView.getMeasuredHeight());
-        mPreviewLocalRect.set(mPreviewGlobalRect);
-        mPreviewGlobalRect.offset(mLivePreviewLocation[0], mLivePreviewLocation[1]);
     }
 
     private void setupCurrentWallpaperPreview() {
@@ -303,7 +290,6 @@ public class LivePreviewFragment extends PreviewFragment implements
             mSettingsLiveData.removeObserver(mSettingsSliceView);
             mSettingsLiveData = null;
         }
-        LiveTileOverlay.INSTANCE.detach(mHomePreview.getOverlay());
         if (mWallpaperConnection != null) {
             mWallpaperConnection.disconnect();
             mWallpaperConnection = null;
@@ -324,13 +310,13 @@ public class LivePreviewFragment extends PreviewFragment implements
                 mWallpaper.getThumbAsset(activity.getApplicationContext())
                         .loadPreviewImage(activity,
                                 mWallpaperSurfaceCallback.getHomeImageWallpaper(),
-                                getResources().getColor(R.color.secondary_color));
+                                ResourceUtils.getColorAttr(getActivity(),
+                                        android.R.attr.colorSecondary));
             }
-            LiveTileOverlay.INSTANCE.detach(thumbnailView.getOverlay());
 
             setUpLiveWallpaperPreview(mWallpaper, thumbnailView,
-                    new ColorDrawable(getResources().getColor(
-                            R.color.secondary_color, activity.getTheme())));
+                    new ColorDrawable(ResourceUtils.getColorAttr(getActivity(),
+                            android.R.attr.colorSecondary)));
         });
     }
 
@@ -349,15 +335,11 @@ public class LivePreviewFragment extends PreviewFragment implements
         }
 
         if (WallpaperConnection.isPreviewAvailable()) {
-            repositionPreview(previewView);
             mWallpaperConnection = new WallpaperConnection(
                     getWallpaperIntent(homeWallpaper.getWallpaperComponent()),
                     activity,
                     /* listener= */ this,
-                    mPreviewGlobalRect);
-
-            LiveTileOverlay.INSTANCE.update(new RectF(mPreviewLocalRect),
-                    ((CardView) previewView.getParent()).getRadius());
+                    mWallpaperSurface);
 
             mWallpaperConnection.setVisibility(true);
         } else {
@@ -375,7 +357,6 @@ public class LivePreviewFragment extends PreviewFragment implements
                 .withEndAction(() -> {
                     if (mWallpaperConnection != null && !mWallpaperConnection.connect()) {
                         mWallpaperConnection = null;
-                        LiveTileOverlay.INSTANCE.detach(previewView.getOverlay());
                     }
                 }));
     }
@@ -456,11 +437,9 @@ public class LivePreviewFragment extends PreviewFragment implements
                     mLoadingScrim.setVisibility(View.GONE);
                 }));
         final Drawable placeholder = mHomePreview.getDrawable() == null
-                ? new ColorDrawable(getResources().getColor(R.color.secondary_color,
-                activity.getTheme()))
+                ? new ColorDrawable(ResourceUtils.getColorAttr(getActivity(),
+                android.R.attr.colorSecondary))
                 : mHomePreview.getDrawable();
-        LiveTileOverlay.INSTANCE.setForegroundDrawable(placeholder);
-        LiveTileOverlay.INSTANCE.attach(mHomePreview.getOverlay());
         mHomePreview.animate()
                 .setStartDelay(0)
                 .setDuration(150)
@@ -468,9 +447,7 @@ public class LivePreviewFragment extends PreviewFragment implements
                         android.R.interpolator.fast_out_linear_in))
                 .setUpdateListener(value -> placeholder.setAlpha(
                         (int) (255 * (1 - value.getAnimatedFraction()))))
-                .withEndAction(() -> {
-                    LiveTileOverlay.INSTANCE.setForegroundDrawable(null);
-                }).start();
+                .start();
     }
 
     @Override

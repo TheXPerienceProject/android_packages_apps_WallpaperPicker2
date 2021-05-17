@@ -15,12 +15,17 @@
  */
 package com.android.wallpaper.util;
 
-import android.app.Activity;
+import static android.graphics.Matrix.MSCALE_X;
+import static android.graphics.Matrix.MSCALE_Y;
+import static android.graphics.Matrix.MSKEW_X;
+import static android.graphics.Matrix.MSKEW_Y;
+
 import android.app.WallpaperColors;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.IBinder;
@@ -29,13 +34,13 @@ import android.os.RemoteException;
 import android.service.wallpaper.IWallpaperConnection;
 import android.service.wallpaper.IWallpaperEngine;
 import android.service.wallpaper.IWallpaperService;
+import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.View;
+import android.view.SurfaceControl;
+import android.view.SurfaceView;
 import android.view.WindowManager.LayoutParams;
 
 import androidx.annotation.Nullable;
-
-import com.android.systemui.shared.system.WallpaperEngineCompat;
 
 /**
  * Implementation of {@link IWallpaperConnection} that handles communication with a
@@ -47,37 +52,53 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
      * Returns whether live preview is available in framework.
      */
     public static boolean isPreviewAvailable() {
-        return WallpaperEngineCompat.supportsScalePreview();
+        try {
+            return IWallpaperEngine.class.getMethod("mirrorSurfaceControl") != null;
+        } catch (NoSuchMethodException | SecurityException e) {
+            return false;
+        }
     }
 
     private static final String TAG = "WallpaperConnection";
-    private final Activity mActivity;
+    private final Context mContext;
     private final Intent mIntent;
     private final WallpaperConnectionListener mListener;
-    private Rect mWallpaperPreviewRect;
+    private final SurfaceView mContainerView;
+    private final SurfaceView mSecondContainerView;
     private IWallpaperService mService;
     private IWallpaperEngine mEngine;
     private boolean mConnected;
     private boolean mIsVisible;
     private boolean mIsEngineVisible;
     private boolean mEngineReady;
-    private WallpaperEngineCompat mEngineCompat;
 
     /**
      * @param intent used to bind the wallpaper service
-     * @param activity Activity that owns the window where the wallpaper is rendered
-     * @param listener if provided, it'll be notified of connection/desconnection events
-     * @param wallpaperPositionInScreen an optional Rect with the position to render the wallpaper
-     *                                  in global coordinates. If null, the wallpaper will be
-     *                                  rendered in full screen.
+     * @param context Context used to start and bind the live wallpaper service
+     * @param listener if provided, it'll be notified of connection/disconnection events
+     * @param containerView SurfaceView that will display the wallpaper
      */
-    public WallpaperConnection(Intent intent, Activity activity,
-            @Nullable WallpaperConnectionListener listener,
-            @Nullable Rect wallpaperPositionInScreen) {
-        mActivity = activity;
+    public WallpaperConnection(Intent intent, Context context,
+            @Nullable WallpaperConnectionListener listener, SurfaceView containerView) {
+        this(intent, context, listener, containerView, null);
+    }
+
+    /**
+     * @param intent used to bind the wallpaper service
+     * @param context Context used to start and bind the live wallpaper service
+     * @param listener if provided, it'll be notified of connection/disconnection events
+     * @param containerView SurfaceView that will display the wallpaper
+     * @param secondaryContainerView optional SurfaceView that will display a second, mirrored
+     *                               version of the wallpaper
+     */
+    public WallpaperConnection(Intent intent, Context context,
+            @Nullable WallpaperConnectionListener listener, SurfaceView containerView,
+            @Nullable SurfaceView secondaryContainerView) {
+        mContext = context.getApplicationContext();
         mIntent = intent;
         mListener = listener;
-        mWallpaperPreviewRect = wallpaperPositionInScreen;
+        mContainerView = containerView;
+        mSecondContainerView = secondaryContainerView;
     }
 
     /**
@@ -88,7 +109,7 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
             if (mConnected) {
                 return true;
             }
-            if (!mActivity.bindService(mIntent, this,
+            if (!mContext.bindService(mIntent, this,
                     Context.BIND_AUTO_CREATE | Context.BIND_IMPORTANT)) {
                 return false;
             }
@@ -116,13 +137,12 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
                     // Ignore
                 }
                 mEngine = null;
-                mEngineCompat = null;
             }
             try {
-                mActivity.unbindService(this);
+                mContext.unbindService(this);
             } catch (IllegalArgumentException e) {
-                Log.w(TAG, "Can't unbind wallpaper service. "
-                        + "It might have crashed, just ignoring.", e);
+                Log.i(TAG, "Can't unbind wallpaper service. "
+                        + "It might have crashed, just ignoring.");
             }
             mService = null;
         }
@@ -137,18 +157,16 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
     public void onServiceConnected(ComponentName name, IBinder service) {
         mService = IWallpaperService.Stub.asInterface(service);
         try {
-            View root = mActivity.getWindow().getDecorView();
-            int displayId = root.getDisplay().getDisplayId();
+            int displayId = mContainerView.getDisplay().getDisplayId();
 
-            mService.attach(this, root.getWindowToken(),
+            mService.attach(this, mContainerView.getWindowToken(),
                     LayoutParams.TYPE_APPLICATION_MEDIA,
-                    true, root.getWidth(), root.getHeight(),
+                    true, mContainerView.getWidth(), mContainerView.getHeight(),
                     new Rect(0, 0, 0, 0), displayId);
         } catch (RemoteException e) {
             Log.w(TAG, "Failed attaching wallpaper; clearing", e);
         }
     }
-
 
     @Override
     public void onLocalWallpaperColorsChanged(RectF area,
@@ -162,7 +180,6 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
     public void onServiceDisconnected(ComponentName name) {
         mService = null;
         mEngine = null;
-        mEngineCompat = null;
         Log.w(TAG, "Wallpaper service gone: " + name);
     }
 
@@ -173,8 +190,6 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
         synchronized (this) {
             if (mConnected) {
                 mEngine = engine;
-                mEngineCompat = new WallpaperEngineCompat(mEngine);
-                updateEnginePosition();
                 if (mIsVisible) {
                     setEngineVisibility(true);
                 }
@@ -196,12 +211,6 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
         }
     }
 
-    private void updateEnginePosition() {
-        if (mWallpaperPreviewRect != null && mEngineCompat != null) {
-            mEngineCompat.scalePreview(mWallpaperPreviewRect);
-        }
-    }
-
     /**
      * Returns the engine handled by this WallpaperConnection
      */
@@ -218,7 +227,7 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
 
     @Override
     public void onWallpaperColorsChanged(WallpaperColors colors, int displayId) {
-        mActivity.runOnUiThread(() -> {
+        mContainerView.post(() -> {
             if (mListener != null) {
                 mListener.onWallpaperColorsChanged(colors, displayId);
             }
@@ -228,19 +237,18 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
     @Override
     public void engineShown(IWallpaperEngine engine)  {
         mEngineReady = true;
-        mActivity.runOnUiThread(() -> {
+        if (mContainerView != null) {
+            reparentWallpaperSurface(mContainerView);
+        }
+        if (mSecondContainerView != null) {
+            reparentWallpaperSurface(mSecondContainerView);
+        }
+
+        mContainerView.post(() -> {
             if (mListener != null) {
                 mListener.onEngineShown();
             }
         });
-    }
-
-    /**
-     * Update the wallpaper's position to match the given Rect (in gobal coordinates)
-     */
-    public void updatePreviewPosition(Rect positionGlobalRect) {
-        mWallpaperPreviewRect = positionGlobalRect;
-        updateEnginePosition();
     }
 
     /**
@@ -267,6 +275,34 @@ public class WallpaperConnection extends IWallpaperConnection.Stub implements Se
                 Log.w(TAG, "Failure setting wallpaper visibility ", e);
             }
         }
+    }
+
+    private void reparentWallpaperSurface(SurfaceView parentSurface) {
+        try {
+            SurfaceControl wallpaperMirrorSC = mEngine.mirrorSurfaceControl();
+            SurfaceControl parentSC = parentSurface.getSurfaceControl();
+            float[] values = getScale(parentSurface);
+            SurfaceControl.Transaction t = new SurfaceControl.Transaction();
+            t.setMatrix(wallpaperMirrorSC, values[MSCALE_X], values[MSKEW_Y],
+                    values[MSKEW_X], values[MSCALE_Y]);
+            t.reparent(wallpaperMirrorSC, parentSC);
+            t.show(wallpaperMirrorSC);
+            t.apply();
+        } catch (RemoteException e) {
+            Log.e(TAG, "Couldn't reparent wallpaper surface", e);
+        }
+    }
+
+    private float[] getScale(SurfaceView parentSurface) {
+        Matrix m = new Matrix();
+        float[] values = new float[9];
+        Rect surfacePosition = parentSurface.getHolder().getSurfaceFrame();
+        DisplayMetrics metrics = DisplayMetricsRetriever.getInstance().getDisplayMetrics(
+                mContainerView.getResources(), mContainerView.getDisplay());
+        m.postScale(((float) surfacePosition.width()) / metrics.widthPixels,
+                ((float) surfacePosition.height()) / metrics.heightPixels);
+        m.getValues(values);
+        return values;
     }
 
     /**
