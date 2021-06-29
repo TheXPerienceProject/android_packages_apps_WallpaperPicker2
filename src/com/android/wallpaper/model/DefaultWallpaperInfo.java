@@ -37,7 +37,7 @@ public class DefaultWallpaperInfo extends WallpaperInfo {
             new Creator<DefaultWallpaperInfo>() {
                 @Override
                 public DefaultWallpaperInfo createFromParcel(Parcel in) {
-                    return new DefaultWallpaperInfo(in);
+                    return new DefaultWallpaperInfo();
                 }
 
                 @Override
@@ -46,12 +46,6 @@ public class DefaultWallpaperInfo extends WallpaperInfo {
                 }
             };
     private Asset mAsset;
-
-    public DefaultWallpaperInfo() {}
-
-    private DefaultWallpaperInfo(Parcel in) {
-        super(in);
-    }
 
     @Override
     public List<String> getAttributions(Context context) {
@@ -106,6 +100,5 @@ public class DefaultWallpaperInfo extends WallpaperInfo {
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        super.writeToParcel(parcel, i);
     }
 }

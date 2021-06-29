@@ -20,7 +20,6 @@ import android.graphics.PixelFormat;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
-import androidx.core.view.WindowCompat;
 
 import com.android.wallpaper.R;
 import com.android.wallpaper.module.Injector;
@@ -33,7 +32,7 @@ import com.android.wallpaper.module.UserEventLogger;
 public abstract class BasePreviewActivity extends BaseActivity {
     public static final String EXTRA_WALLPAPER_INFO =
             "com.android.wallpaper.picker.wallpaper_info";
-    public static final String EXTRA_VIEW_AS_HOME =
+    public static final String EXTRA_VIEW_AS_HODE =
             "com.android.wallpaper.picker.view_as_home";
     public static final String EXTRA_TESTING_MODE_ENABLED =
             "com.android.wallpaper.picker.testing_mode_enabled";
@@ -52,12 +51,5 @@ public abstract class BasePreviewActivity extends BaseActivity {
         if (getIntent() != null && getIntent().getAction() != null) {
             mUserEventLogger.logAppLaunched(getIntent());
         }
-    }
-
-    /** Allows the current activity to be full screen. */
-    protected void enableFullScreen() {
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), /* decorFitsSystemWindows= */ false);
-
-        // Window insets are set in the PreviewFragment#onCreateView method.
     }
 }

@@ -21,7 +21,6 @@ import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
@@ -31,36 +30,26 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.ImageView;
 
-import androidx.annotation.WorkerThread;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.Key;
-import com.bumptech.glide.load.MultiTransformation;
-import com.bumptech.glide.load.Transformation;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
-import com.bumptech.glide.load.resource.bitmap.FitCenter;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
 
 import java.io.IOException;
 import java.security.MessageDigest;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Asset wrapping a drawable for a live wallpaper thumbnail.
  */
 public class LiveWallpaperThumbAsset extends Asset {
     private static final String TAG = "LiveWallpaperThumbAsset";
-    private static final int LOW_RES_THUMB_TIMEOUT_SECONDS = 2;
 
     protected final Context mContext;
     protected final android.app.WallpaperInfo mInfo;
     // The content Uri of thumbnail
     protected Uri mUri;
-    private Drawable mThumbnailDrawable;
+    private BitmapDrawable mThumbnailDrawable;
 
     public LiveWallpaperThumbAsset(Context context, android.app.WallpaperInfo info) {
         mContext = context.getApplicationContext();
@@ -117,56 +106,6 @@ public class LiveWallpaperThumbAsset extends Asset {
                 .into(imageView);
     }
 
-    @Override
-    public void loadLowResDrawable(Activity activity, ImageView imageView, int placeholderColor,
-            BitmapTransformation transformation) {
-        Transformation<Bitmap> finalTransformation = (transformation == null)
-                ? new FitCenter()
-                : new MultiTransformation<>(new FitCenter(), transformation);
-        Glide.with(activity)
-                .asDrawable()
-                .load(LiveWallpaperThumbAsset.this)
-                .apply(RequestOptions.bitmapTransform(finalTransformation)
-                        .placeholder(new ColorDrawable(placeholderColor)))
-                .into(imageView);
-    }
-
-    @Override
-    @WorkerThread
-    public Bitmap getLowResBitmap(Context context) {
-        try {
-            Drawable drawable = Glide.with(context)
-                    .asDrawable()
-                    .load(this)
-                    .submit()
-                    .get(LOW_RES_THUMB_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-            if (drawable instanceof BitmapDrawable) {
-                BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
-                Bitmap bitmap = bitmapDrawable.getBitmap();
-                if (bitmap != null) {
-                    return bitmap;
-                }
-            }
-            Bitmap bitmap;
-            // If not a bitmap, draw the drawable into a bitmap
-            if (drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
-                return null;
-            } else {
-                bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),
-                        drawable.getIntrinsicHeight(), Bitmap.Config.RGB_565);
-            }
-
-            Canvas canvas = new Canvas(bitmap);
-            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-            drawable.draw(canvas);
-            return bitmap;
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            Log.w(TAG, "Couldn't obtain low res bitmap", e);
-        }
-        return null;
-    }
-
     /**
      * Returns a Glide cache key.
      */
@@ -179,10 +118,10 @@ public class LiveWallpaperThumbAsset extends Asset {
      * the main UI thread.
      */
     protected Drawable getThumbnailDrawable() {
-        if (mThumbnailDrawable != null) {
-            return mThumbnailDrawable;
-        }
         if (mUri != null) {
+            if (mThumbnailDrawable != null) {
+                return mThumbnailDrawable;
+            }
             try (AssetFileDescriptor assetFileDescriptor =
                          mContext.getContentResolver().openAssetFileDescriptor(mUri, "r")) {
                 if (assetFileDescriptor != null) {
@@ -194,8 +133,7 @@ public class LiveWallpaperThumbAsset extends Asset {
                 Log.w(TAG, "Not found thumbnail from URI.");
             }
         }
-        mThumbnailDrawable = mInfo.loadThumbnail(mContext.getPackageManager());
-        return mThumbnailDrawable;
+        return mInfo.loadThumbnail(mContext.getPackageManager());
     }
 
     /**

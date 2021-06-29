@@ -42,7 +42,6 @@ public abstract class BaseWallpaperInjector implements Injector {
     private PackageStatusNotifier mPackageStatusNotifier;
     private LiveWallpaperInfoFactory mLiveWallpaperInfoFactory;
     private DrawableLayerResolver mDrawableLayerResolver;
-    private CustomizationSections mCustomizationSections;
 
     @Override
     public synchronized BitmapCropper getBitmapCropper() {
@@ -177,13 +176,5 @@ public abstract class BaseWallpaperInjector implements Injector {
             mDrawableLayerResolver = new DefaultDrawableLayerResolver();
         }
         return mDrawableLayerResolver;
-    }
-
-    @Override
-    public CustomizationSections getCustomizationSections() {
-        if (mCustomizationSections == null) {
-            mCustomizationSections = new WallpaperPickerSections();
-        }
-        return mCustomizationSections;
     }
 }

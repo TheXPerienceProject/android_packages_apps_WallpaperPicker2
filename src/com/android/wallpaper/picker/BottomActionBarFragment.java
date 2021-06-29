@@ -19,7 +19,6 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 
-import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -48,12 +47,17 @@ public class BottomActionBarFragment extends Fragment {
         mBottomActionBar = findBottomActionBar();
         if (mBottomActionBar != null) {
             mBottomActionBar.reset();
+            mBottomActionBar.bindBackButtonToSystemBackKey(getActivity());
             onBottomActionBarReady(mBottomActionBar);
         }
     }
 
     /** Returns {@code true} if the fragment would handle the event. */
     public boolean onBackPressed() {
+        if (mBottomActionBar != null && mBottomActionBar.isVisible()) {
+            mBottomActionBar.hide();
+            return true;
+        }
         return false;
     }
 
@@ -61,12 +65,7 @@ public class BottomActionBarFragment extends Fragment {
      * Gets called when {@link #onViewCreated} finished. For extending fragment, this is the only
      * one interface to get {@link BottomActionBar}.
      */
-    @CallSuper
-    protected void onBottomActionBarReady(BottomActionBar bottomActionBar) {
-        // Needed for some cases that need to recreate the BottomActionBar.
-        mBottomActionBar = bottomActionBar;
-        bottomActionBar.bindBackButtonToSystemBackKey(getActivity());
-    }
+    protected void onBottomActionBarReady(BottomActionBar bottomActionBar) {}
 
     @Nullable
     private BottomActionBar findBottomActionBar() {

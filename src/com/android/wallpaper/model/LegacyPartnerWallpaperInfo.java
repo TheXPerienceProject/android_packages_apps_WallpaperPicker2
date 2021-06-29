@@ -63,7 +63,6 @@ public class LegacyPartnerWallpaperInfo extends WallpaperInfo {
     }
 
     private LegacyPartnerWallpaperInfo(Parcel in) {
-        super(in);
         mThumbName = in.readString();
         mFullName = in.readString();
     }
@@ -179,7 +178,6 @@ public class LegacyPartnerWallpaperInfo extends WallpaperInfo {
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        super.writeToParcel(parcel, i);
         parcel.writeString(mThumbName);
         parcel.writeString(mFullName);
     }

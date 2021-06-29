@@ -42,7 +42,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.cardview.widget.CardView;
 import androidx.core.widget.ContentLoadingProgressBar;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
@@ -120,8 +119,6 @@ public class IndividualPickerFragment extends AppbarFragment
     static final int SPECIAL_FIXED_TILE_ADAPTER_POSITION = 0;
     static final String ARG_CATEGORY_COLLECTION_ID = "category_collection_id";
 
-    protected static final int MAX_CAPACITY_IN_FEWER_COLUMN_LAYOUT = 8;
-
     private static final String TAG = "IndividualPickerFrgmnt";
     private static final int UNUSED_REQUEST_CODE = 1;
     private static final String TAG_START_ROTATION_DIALOG = "start_rotation_dialog";
@@ -131,6 +128,7 @@ public class IndividualPickerFragment extends AppbarFragment
     private static final String TAG_SET_WALLPAPER_ERROR_DIALOG_FRAGMENT =
             "individual_set_wallpaper_error_dialog";
     private static final String KEY_NIGHT_MODE = "IndividualPickerFragment.NIGHT_MODE";
+    private static final int MAX_CAPACITY_IN_FEWER_COLUMN_LAYOUT = 8;
 
     /**
      * An interface for updating the thumbnail with the specific wallpaper.
@@ -582,23 +580,10 @@ public class IndividualPickerFragment extends AppbarFragment
         if (mCategory == null) {
             return;
         }
-
-        // Wallpaper count could change, so we may need to change the layout(2 or 3 columns layout)
-        GridLayoutManager gridLayoutManager = (GridLayoutManager) mImageGrid.getLayoutManager();
-        boolean needUpdateLayout =
-                gridLayoutManager != null && gridLayoutManager.getSpanCount() != getNumColumns();
-
-        // Skip if the adapter was already created and don't need to change the layout
-        if (mAdapter != null && !needUpdateLayout) {
+        // Skip if the adapter was already created
+        if (mAdapter != null) {
             return;
         }
-
-        // Clear the old decoration
-        int decorationCount = mImageGrid.getItemDecorationCount();
-        for (int i = 0; i < decorationCount; i++) {
-            mImageGrid.removeItemDecorationAt(i);
-        }
-
         mImageGrid.addItemDecoration(new GridPaddingDecoration(getGridItemPaddingHorizontal(),
                 getGridItemPaddingBottom()));
         int edgePadding = getEdgePadding();
@@ -613,7 +598,7 @@ public class IndividualPickerFragment extends AppbarFragment
                         mImageGrid, (BottomSheetHost) getParentFragment(), getNumColumns()));
     }
 
-    boolean isFewerColumnLayout() {
+    private boolean isFewerColumnLayout() {
         return mWallpapers != null && mWallpapers.size() <= MAX_CAPACITY_IN_FEWER_COLUMN_LAYOUT;
     }
 
@@ -1157,7 +1142,7 @@ public class IndividualPickerFragment extends AppbarFragment
         }
     }
 
-    boolean shouldShowRotationTile() {
+    private boolean shouldShowRotationTile() {
         return mFormFactor == FormFactorChecker.FORM_FACTOR_DESKTOP && isRotationEnabled();
     }
 
@@ -1431,19 +1416,16 @@ public class IndividualPickerFragment extends AppbarFragment
             int wallpaperIndex = (shouldShowRotationTile() || mCategory.supportsCustomPhotos())
                     ? position - 1 : position;
             WallpaperInfo wallpaper = mWallpapers.get(wallpaperIndex);
-            wallpaper.computePlaceholderColor(holder.itemView.getContext());
             ((IndividualHolder) holder).bindWallpaper(wallpaper);
             boolean isWallpaperApplied = mAppliedWallpaperIds.contains(wallpaper.getWallpaperId());
+            boolean isWallpaperSelected = wallpaper.equals(mSelectedWallpaperInfo);
+            boolean hasUserSelectedWallpaper = mSelectedWallpaperInfo != null;
 
             if (isWallpaperApplied) {
                 mSelectedAdapterPosition = position;
                 mAppliedWallpaperInfo = wallpaper;
             }
 
-            CardView container = holder.itemView.findViewById(R.id.wallpaper_container);
-            int radiusId = isFewerColumnLayout() ? R.dimen.grid_item_all_radius
-                    : R.dimen.grid_item_all_radius_small;
-            container.setRadius(getResources().getDimension(radiusId));
             CustomShapeImageView thumbnail = holder.itemView.findViewById(R.id.thumbnail);
             thumbnail.setClipped(isWallpaperApplied);
         }

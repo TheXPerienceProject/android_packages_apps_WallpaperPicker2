@@ -49,15 +49,13 @@ public class PreviewActivity extends BasePreviewActivity implements AppbarFragme
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_preview);
 
-        enableFullScreen();
-
         FragmentManager fm = getSupportFragmentManager();
         Fragment fragment = fm.findFragmentById(R.id.fragment_container);
 
         if (fragment == null) {
             Intent intent = getIntent();
             WallpaperInfo wallpaper = intent.getParcelableExtra(EXTRA_WALLPAPER_INFO);
-            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, true);
+            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HODE, true);
             boolean testingModeEnabled = intent.getBooleanExtra(EXTRA_TESTING_MODE_ENABLED, false);
             fragment = InjectorProvider.getInjector().getPreviewFragment(
                     /* context */ this,

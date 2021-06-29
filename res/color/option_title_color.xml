@@ -20,7 +20,7 @@
         android:color="?android:textColorPrimary" />
     <item
         android:state_activated="false"
-        android:color="?android:textColorSecondary" />
+        android:color="?android:textColorTertiary" />
     <item
-        android:color="?android:textColorSecondary"/>
+        android:color="?android:textColorTertiary"/>
 </selector>

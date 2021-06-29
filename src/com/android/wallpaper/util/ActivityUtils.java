@@ -15,7 +15,6 @@
  */
 package com.android.wallpaper.util;
 
-import static com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SETTINGS_SEARCH;
 import static com.android.wallpaper.util.LaunchSourceUtils.LAUNCH_SOURCE_SETTINGS;
 import static com.android.wallpaper.util.LaunchSourceUtils.WALLPAPER_LAUNCH_SOURCE;
 
@@ -60,35 +59,17 @@ public final class ActivityUtils {
     }
 
     /**
-     * Returns true if wallpaper launch source is from Settings related.
+     * Return true if wallpaper launch source is from Settings.
      *
      * @param intent activity intent.
      */
-    public static boolean isLaunchedFromSettingsRelated(Intent intent) {
-        return isLaunchedFromSettings(intent) || isLaunchedFromSettingsSearch(intent);
-    }
-
-    /**
-     * Returns true if wallpaper launch source is from Settings.
-     *
-     * @param intent activity intent.
-     */
-    private static boolean isLaunchedFromSettings(Intent intent) {
+    public static boolean isLaunchedFromSettings(Intent intent) {
         return (intent != null && TextUtils.equals(LAUNCH_SOURCE_SETTINGS,
                 intent.getStringExtra(WALLPAPER_LAUNCH_SOURCE)));
     }
 
     /**
-     * Returns true if wallpaper launch source is from Settings Search.
-     *
-     * @param intent activity intent.
-     */
-    public static boolean isLaunchedFromSettingsSearch(Intent intent) {
-        return (intent != null && intent.hasExtra(LAUNCH_SETTINGS_SEARCH));
-    }
-
-    /**
-     * Returns true if wallpaper is in SUW mode.
+     * Return true if wallpaper is in SUW mode.
      *
      * @param context activity's context.
      */

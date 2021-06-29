@@ -184,7 +184,6 @@ public class SystemStaticWallpaperInfo extends WallpaperInfo {
     }
 
     private SystemStaticWallpaperInfo(Parcel in) {
-        super(in);
         mPackageName = in.readString();
         mWallpaperId = in.readString();
         mCollectionId = in.readString();
@@ -293,7 +292,6 @@ public class SystemStaticWallpaperInfo extends WallpaperInfo {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        super.writeToParcel(dest, flags);
         dest.writeString(mPackageName);
         dest.writeString(mWallpaperId);
         dest.writeString(mCollectionId);

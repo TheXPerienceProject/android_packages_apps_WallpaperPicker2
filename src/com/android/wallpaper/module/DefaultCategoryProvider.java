@@ -69,7 +69,7 @@ public class DefaultCategoryProvider implements CategoryProvider {
      * Relative category priorities. Lower numbers correspond to higher priorities (i.e., should
      * appear higher in the categories list).
      */
-    protected static final int PRIORITY_MY_PHOTOS = 1;
+    private static final int PRIORITY_MY_PHOTOS = 1;
     private static final int PRIORITY_SYSTEM = 100;
     private static final int PRIORITY_ON_DEVICE = 200;
     private static final int PRIORITY_LIVE = 300;
@@ -142,18 +142,16 @@ public class DefaultCategoryProvider implements CategoryProvider {
     }
 
     @Override
-    public boolean resetIfNeeded() {
+    public void resetIfNeeded() {
         if (mNetworkStatus != mNetworkStatusNotifier.getNetworkStatus()
                 || mLocale != getLocale()) {
             mCategories.clear();
             mFetchedCategories = false;
-            return true;
         }
-        return false;
     }
 
     @Override
-    public boolean isFeaturedCollectionAvailable() {
+    public boolean isFeaturedCategory(Category category) {
         return false;
     }
 

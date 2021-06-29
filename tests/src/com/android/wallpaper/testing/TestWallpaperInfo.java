@@ -73,7 +73,6 @@ public class TestWallpaperInfo extends WallpaperInfo {
     }
 
     private TestWallpaperInfo(Parcel in) {
-        super(in);
         mPixelColor = in.readInt();
         mAttributions = in.createStringArrayList();
         mActionUrl = in.readString();
@@ -201,7 +200,6 @@ public class TestWallpaperInfo extends WallpaperInfo {
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        super.writeToParcel(parcel, i);
         parcel.writeInt(mPixelColor);
         parcel.writeStringList(mAttributions);
         parcel.writeString(mActionUrl);

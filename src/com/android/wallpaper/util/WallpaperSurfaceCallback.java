@@ -33,9 +33,6 @@ import com.android.wallpaper.module.Injector;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.module.PackageStatusNotifier;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-
 /**
  * Default implementation of {@link SurfaceHolder.Callback} to render a static wallpaper when the
  * surface has been created.
@@ -62,16 +59,13 @@ public class WallpaperSurfaceCallback implements SurfaceHolder.Callback {
     private final SurfaceView mWallpaperSurface;
     @Nullable
     private final SurfaceListener mListener;
-    @Nullable
-    private final Future<Integer> mPlaceholderColor;
     private boolean mSurfaceCreated;
 
     private PackageStatusNotifier.Listener mAppStatusListener;
     private PackageStatusNotifier mPackageStatusNotifier;
 
     public WallpaperSurfaceCallback(Context context, View containerView,
-            SurfaceView wallpaperSurface, @Nullable Future<Integer> placeholderColor,
-            @Nullable SurfaceListener listener) {
+            SurfaceView wallpaperSurface, @Nullable SurfaceListener listener) {
         mContext = context.getApplicationContext();
         mContainerView = containerView;
         mWallpaperSurface = wallpaperSurface;
@@ -88,12 +82,6 @@ public class WallpaperSurfaceCallback implements SurfaceHolder.Callback {
         };
         mPackageStatusNotifier.addListener(mAppStatusListener,
                 WallpaperService.SERVICE_INTERFACE);
-        mPlaceholderColor = placeholderColor;
-    }
-
-    public WallpaperSurfaceCallback(Context context, View containerView,
-            SurfaceView wallpaperSurface, @Nullable SurfaceListener listener) {
-        this(context, containerView, wallpaperSurface, null, listener);
     }
 
     public WallpaperSurfaceCallback(Context context, View containerView,
@@ -155,16 +143,8 @@ public class WallpaperSurfaceCallback implements SurfaceHolder.Callback {
 
     private void setupSurfaceWallpaper(boolean forceClean) {
         mHomeImageWallpaper = new ImageView(mContext);
-        Integer placeholder = null;
-        if (mPlaceholderColor != null && mPlaceholderColor.isDone()) {
-            try {
-                placeholder = mPlaceholderColor.get();
-            } catch (InterruptedException | ExecutionException e) {
-                // Ignore
-            }
-        }
-        mHomeImageWallpaper.setBackgroundColor((placeholder != null) ? placeholder
-                : ResourceUtils.getColorAttr(mContext, android.R.attr.colorSecondary));
+        mHomeImageWallpaper.setBackgroundColor(
+                ResourceUtils.getColorAttr(mContext, android.R.attr.colorPrimary));
         mHomeImageWallpaper.measure(makeMeasureSpec(mContainerView.getWidth(), EXACTLY),
                 makeMeasureSpec(mContainerView.getHeight(), EXACTLY));
         mHomeImageWallpaper.layout(0, 0, mContainerView.getWidth(),

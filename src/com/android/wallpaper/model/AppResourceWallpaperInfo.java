@@ -65,7 +65,6 @@ public class AppResourceWallpaperInfo extends WallpaperInfo {
     }
 
     private AppResourceWallpaperInfo(Parcel in) {
-        super(in);
         mPackageName = in.readString();
         mThumbRes = in.readInt();
         mFullRes = in.readInt();
@@ -182,7 +181,6 @@ public class AppResourceWallpaperInfo extends WallpaperInfo {
 
     @Override
     public void writeToParcel(Parcel parcel, int i) {
-        super.writeToParcel(parcel, i);
         parcel.writeString(mPackageName);
         parcel.writeInt(mThumbRes);
         parcel.writeInt(mFullRes);

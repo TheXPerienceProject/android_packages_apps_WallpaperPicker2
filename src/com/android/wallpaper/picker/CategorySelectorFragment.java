@@ -122,7 +122,6 @@ public class CategorySelectorFragment extends AppbarFragment {
     private ArrayList<Category> mCategories = new ArrayList<>();
     private Point mTileSizePx;
     private boolean mAwaitingCategories;
-    private boolean mIsFeaturedCollectionAvailable;
 
     public CategorySelectorFragment() {
         mAdapter = new CategoryAdapter(mCategories);
@@ -251,8 +250,6 @@ public class CategorySelectorFragment extends AppbarFragment {
             mAdapter.notifyItemRemoved(mAdapter.getItemCount() - 1);
             mAwaitingCategories = false;
         }
-
-        mIsFeaturedCollectionAvailable = mCategoryProvider.isFeaturedCollectionAvailable();
     }
 
     void notifyDataSetChanged() {
@@ -293,7 +290,6 @@ public class CategorySelectorFragment extends AppbarFragment {
 
             CardView categoryView = itemView.findViewById(R.id.category);
             categoryView.getLayoutParams().height = mTileSizePx.y;
-            categoryView.setRadius(getResources().getDimension(R.dimen.grid_item_all_radius_small));
         }
 
         @Override
@@ -388,7 +384,6 @@ public class CategorySelectorFragment extends AppbarFragment {
             CardView categoryView = itemView.findViewById(R.id.category);
             categoryView.getLayoutParams().height =
                     SizeCalculator.getFeaturedCategoryTileSize(getActivity()).y;
-            categoryView.setRadius(getResources().getDimension(R.dimen.grid_item_all_radius));
         }
     }
 
@@ -448,7 +443,7 @@ public class CategorySelectorFragment extends AppbarFragment {
                 return ITEM_VIEW_TYPE_MY_PHOTOS;
             }
 
-            if (mIsFeaturedCollectionAvailable && (position == 1 || position == 2)) {
+            if (mCategoryProvider.isFeaturedCategory(mCategories.get(position))) {
                 return ITEM_VIEW_TYPE_FEATURED_CATEGORY;
             }
 
