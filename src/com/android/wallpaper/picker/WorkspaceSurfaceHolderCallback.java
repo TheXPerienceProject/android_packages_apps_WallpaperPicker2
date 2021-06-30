@@ -20,6 +20,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
+import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -30,18 +31,33 @@ import com.android.wallpaper.R;
 import com.android.wallpaper.util.PreviewUtils;
 import com.android.wallpaper.util.SurfaceViewUtils;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /** A surface holder callback that renders user's workspace on the passed in surface view. */
 public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
 
+    /**
+     * Listener to be called when workspace surface is updated with a new Surface Package.
+     */
+    public interface WorkspaceRenderListener {
+        /**
+         * Called on the main thread after the workspace surface is updated from the provider
+         */
+        void onWorkspaceRendered();
+    }
+
+    private static final String TAG = "WsSurfaceHolderCallback";
     private static final String KEY_WALLPAPER_COLORS = "wallpaper_colors";
     private final SurfaceView mWorkspaceSurface;
     private final PreviewUtils mPreviewUtils;
     private final boolean mShouldUseWallpaperColors;
+    private final AtomicBoolean mRequestPending = new AtomicBoolean(false);
 
     private WallpaperColors mWallpaperColors;
     private boolean mIsWallpaperColorsReady;
     private Surface mLastSurface;
     private Message mCallback;
+    private WorkspaceRenderListener mListener;
 
     private boolean mNeedsToCleanUp;
 
@@ -91,39 +107,54 @@ public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
         maybeRenderPreview();
     }
 
+    public void setListener(WorkspaceRenderListener listener) {
+        mListener = listener;
+    }
+
     private void maybeRenderPreview() {
         if ((mShouldUseWallpaperColors && !mIsWallpaperColorsReady) || mLastSurface == null) {
             return;
         }
-        Bundle result = requestPreview(mWorkspaceSurface);
-        if (result != null) {
-            mWorkspaceSurface.setChildSurfacePackage(
-                    SurfaceViewUtils.getSurfacePackage(result));
-            mCallback = SurfaceViewUtils.getCallback(result);
 
-            if (mNeedsToCleanUp) {
-                cleanUp();
+        mRequestPending.set(true);
+        requestPreview(mWorkspaceSurface, (result) -> {
+            mRequestPending.set(false);
+            if (result != null && mLastSurface != null) {
+                mWorkspaceSurface.setChildSurfacePackage(
+                        SurfaceViewUtils.getSurfacePackage(result));
+
+                mCallback = SurfaceViewUtils.getCallback(result);
+
+                if (mNeedsToCleanUp) {
+                    cleanUp();
+                } else if (mListener != null) {
+                    mListener.onWorkspaceRendered();
+                }
             }
-        }
+        });
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) { }
 
     @Override
-    public void surfaceDestroyed(SurfaceHolder holder) { }
+    public void surfaceDestroyed(SurfaceHolder holder) {
+    }
 
     public void cleanUp() {
         if (mCallback != null) {
             try {
                 mCallback.replyTo.send(mCallback);
+                mNeedsToCleanUp = false;
             } catch (RemoteException e) {
-                e.printStackTrace();
+                Log.w(TAG, "Couldn't call cleanup on workspace preview", e);
             } finally {
                 mCallback = null;
             }
         } else {
-            mNeedsToCleanUp = true;
+            if (mRequestPending.get()) {
+                mNeedsToCleanUp = true;
+            }
         }
     }
 
@@ -131,11 +162,12 @@ public class WorkspaceSurfaceHolderCallback implements SurfaceHolder.Callback {
         mLastSurface = null;
     }
 
-    protected Bundle requestPreview(SurfaceView workspaceSurface) {
+    protected void requestPreview(SurfaceView workspaceSurface,
+            PreviewUtils.WorkspacePreviewCallback callback) {
         Bundle request = SurfaceViewUtils.createSurfaceViewRequest(workspaceSurface);
         if (mWallpaperColors != null) {
             request.putParcelable(KEY_WALLPAPER_COLORS, mWallpaperColors);
         }
-        return mPreviewUtils.renderPreview(request);
+        mPreviewUtils.renderPreview(request, callback);
     }
 }

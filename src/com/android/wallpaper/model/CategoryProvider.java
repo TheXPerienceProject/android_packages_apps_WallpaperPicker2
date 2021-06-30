@@ -62,13 +62,13 @@ public interface CategoryProvider {
 
     /**
      * Resets the fetched categories if needed.
+     *
+     * @return {@code true} if the fetched categories are reset; {@code false} otherwise.
      */
-    void resetIfNeeded();
+    boolean resetIfNeeded();
 
     /**
-     * Checks if the category is a featured category.
-     *
-     * @param category the category to be verified
+     * Checks if featured collection available.
      */
-    boolean isFeaturedCategory(Category category);
+    boolean isFeaturedCollectionAvailable();
 }
