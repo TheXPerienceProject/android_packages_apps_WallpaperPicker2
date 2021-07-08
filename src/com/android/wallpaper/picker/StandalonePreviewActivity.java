@@ -22,6 +22,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -49,6 +50,8 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_preview);
+
+        enableFullScreen();
 
         mUserEventLogger = InjectorProvider.getInjector().getUserEventLogger(getApplicationContext());
         mUserEventLogger.logStandalonePreviewLaunched();
@@ -120,6 +123,14 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
     public boolean isUpArrowSupported() {
         // TODO(b/182972395): It should go back to WallpaperPicker.
         return false;
+    }
+
+    @Override
+    protected void enableFullScreen() {
+        super.enableFullScreen();
+        getWindow().setFlags(
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
     }
 
     /**

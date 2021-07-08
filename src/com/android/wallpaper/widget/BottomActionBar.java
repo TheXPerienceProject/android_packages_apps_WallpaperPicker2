@@ -95,7 +95,7 @@ public class BottomActionBar extends FrameLayout {
     // TODO(b/154299462): Separate downloadable related actions from WallpaperPicker.
     /** The action items in the bottom action bar. */
     public enum BottomAction {
-        ROTATION, DELETE, INFORMATION, EDIT, CUSTOMIZE, DOWNLOAD, PROGRESS, APPLY
+        ROTATION, DELETE, INFORMATION, EDIT, CUSTOMIZE, DOWNLOAD, PROGRESS, APPLY, APPLY_TEXT
     }
 
     private final Map<BottomAction, View> mActionMap = new EnumMap<>(BottomAction.class);
@@ -123,6 +123,7 @@ public class BottomActionBar extends FrameLayout {
         mActionMap.put(BottomAction.DOWNLOAD, findViewById(R.id.action_download));
         mActionMap.put(BottomAction.PROGRESS, findViewById(R.id.action_progress));
         mActionMap.put(BottomAction.APPLY, findViewById(R.id.action_apply));
+        mActionMap.put(BottomAction.APPLY_TEXT, findViewById(R.id.action_apply_text_button));
 
         mBottomSheetView = findViewById(R.id.action_bottom_sheet);
         SizeCalculator.adjustBackgroundCornerRadius(mBottomSheetView);
@@ -175,10 +176,6 @@ public class BottomActionBar extends FrameLayout {
     @Override
     public void onVisibilityAggregated(boolean isVisible) {
         super.onVisibilityAggregated(isVisible);
-        if (!isVisible) {
-            hideBottomSheetAndDeselectButtonIfExpanded();
-            mBottomSheetBehavior.reset();
-        }
         mVisibilityChangeListeners.forEach(listener -> listener.onVisibilityChange(isVisible));
     }
 
@@ -205,6 +202,15 @@ public class BottomActionBar extends FrameLayout {
     /** Collapses the bottom sheet. */
     public void collapseBottomSheetIfExpanded() {
         hideBottomSheetAndDeselectButtonIfExpanded();
+    }
+
+    /** Enables or disables action buttons that show the bottom sheet. */
+    public void enableActionButtonsWithBottomSheet(boolean enabled) {
+        if (enabled) {
+            enableActions(mContentViewMap.keySet().toArray(new BottomAction[0]));
+        } else {
+            disableActions(mContentViewMap.keySet().toArray(new BottomAction[0]));
+        }
     }
 
     /**
@@ -266,11 +272,6 @@ public class BottomActionBar extends FrameLayout {
     /** Set back button visibility. */
     public void setBackButtonVisibility(int visibility) {
         findViewById(R.id.action_back).setVisibility(visibility);
-    }
-
-    /** Get back button visibility. */
-    public int getBackButtonVisibility() {
-        return findViewById(R.id.action_back).getVisibility();
     }
 
     /** Binds the cancel button to back key. */
@@ -432,6 +433,11 @@ public class BottomActionBar extends FrameLayout {
 
     public boolean isActionSelected(BottomAction action) {
         return mActionMap.get(action).isSelected();
+    }
+
+    /** Returns {@code true} if the state of bottom sheet is collapsed. */
+    public boolean isBottomSheetCollapsed() {
+        return mBottomSheetBehavior.getState() == STATE_COLLAPSED;
     }
 
     /** Resets {@link BottomActionBar} to initial state. */

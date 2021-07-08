@@ -93,12 +93,13 @@ public class TestCategoryProvider implements CategoryProvider {
     }
 
     @Override
-    public void resetIfNeeded() {
+    public boolean resetIfNeeded() {
         mCategories.clear();
+        return true;
     }
 
     @Override
-    public boolean isFeaturedCategory(Category category) {
+    public boolean isFeaturedCollectionAvailable() {
         return false;
     }
 
