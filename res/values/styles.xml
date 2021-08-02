@@ -88,6 +88,9 @@
     <style name="LightDialogTheme" parent="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
         <item name="android:layout">@layout/abc_alert_dialog_material</item>
         <item name="windowActionBar">false</item>
+        <item name="android:windowMinWidthMajor">@android:dimen/dialog_min_width_major</item>
+        <item name="android:windowMinWidthMinor">@android:dimen/dialog_min_width_minor</item>
+        <item name="android:dialogCornerRadius">24dp</item>
     </style>
 
     <style name="ProgressDialogThemePreL" parent="@style/Theme.AppCompat.Light.Dialog.Alert">
@@ -99,7 +102,7 @@
 
     <style name="SubtitleTextAppearance" parent="@android:style/TextAppearance.DeviceDefault.Widget.ActionBar.Subtitle"/>
 
-    <style name="PillTabsTextAppearance" parent="TitleTextAppearance">
+    <style name="SeparatedTabsTextAppearance" parent="TitleTextAppearance">
         <item name="android:textStyle" />
         <item name="textAllCaps">false</item>
         <item name="android:textSize">14sp</item>
@@ -121,12 +124,7 @@
     </style>
 
     <!-- Preview attribution pane styles -->
-    <style name="WallpaperPicker.BottomPaneStyle" parent="@android:style/Theme.DeviceDefault.Settings">
-        <item name="tabTextAppearance">@style/WallpaperPicker.Preview.TextAppearance.NoAllCaps</item>
-        <item name="tabIndicatorColor">?android:attr/textColorPrimary</item>
-        <item name="tabGravity">fill</item>
-        <item name="tabMaxWidth">0dp</item>
-    </style>
+    <style name="WallpaperPicker.BottomPaneStyle" parent="@android:style/Theme.DeviceDefault.Settings"/>
 
     <!-- Preview customization pane styles -->
     <style name="WallpaperPicker.CustomizationPaneStyle" parent="@android:style/Theme.DeviceDefault.Settings">
@@ -145,7 +143,7 @@
     <!-- Studio can't directly reference ?androidprv:attr/textColorOnAccent here,
      so we set the text color on the dialog items instead. -->
     <style name="set_wallpaper_destination_item">
-        <item name="android:fontFamily">@*android:string/config_bodyFontFamily</item>
+        <item name="android:fontFamily">@*android:string/config_bodyFontFamilyMedium</item>
         <item name="android:minHeight">@dimen/set_wallpaper_dialog_item_min_height</item>
         <item name="android:minWidth">@dimen/set_wallpaper_dialog_item_min_width</item>
         <item name="android:textAlignment">center</item>
@@ -182,8 +180,6 @@
 
     <!-- Bottom action item -->
     <style name="BottomActionItemStyle">
-        <item name="android:tint">@color/bottom_action_button_color_tint</item>
-        <item name="android:background">@drawable/bottom_action_button_background</item>
         <item name="android:paddingHorizontal">@dimen/bottom_action_button_padding_horizontal</item>
     </style>
 

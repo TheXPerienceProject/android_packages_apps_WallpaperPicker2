@@ -14,9 +14,18 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<shape android:shape="rectangle"
+<com.android.wallpaper.widget.SeparatedTabLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:androidprv="http://schemas.android.com/apk/prv/res/android">
-    <solid android:color="?androidprv:attr/colorAccentPrimary" />
-    <corners android:radius="@dimen/pill_tabs_corner_radius" />
-</shape>
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/separated_tabs"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/separated_tabs_height"
+    app:tabBackground="@drawable/separated_tabs_background"
+    app:tabIndicatorAnimationDuration="0"
+    app:tabIndicator="@drawable/separated_tabs_indicator_background"
+    app:tabIndicatorColor="@color/separated_tabs_indicator_color"
+    app:tabIndicatorFullWidth="true"
+    app:tabIndicatorGravity="stretch"
+    app:tabGravity="fill"
+    app:tabTextColor="@color/separated_tabs_text_color"
+    app:tabTextAppearance="@style/SeparatedTabsTextAppearance" />
